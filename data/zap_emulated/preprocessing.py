@@ -1,4 +1,6 @@
+import math
 import os
+from collections import Counter
 
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder
@@ -12,6 +14,11 @@ pd.set_option("display.max_colwidth", None)
 DATA_PATH = os.environ.get("DATA_PATH", "marked.csv")
 df = pd.read_csv(DATA_PATH)
 df[TARGET] = df[TARGET].fillna("NORMAL")
+
+value_counts = df[TARGET].value_counts()
+valid_labels = value_counts[value_counts >= 100].index
+df = df[df[TARGET].isin(valid_labels)]
+
 df = df[[TARGET] + FEATURES].dropna()
 
 
@@ -37,6 +44,16 @@ def _encode_text_feature(series: pd.Series) -> pd.Series:
     return series.fillna("").str.len().astype(int)
 
 
+def _string_entropy(s: str) -> float:
+    if not s:
+        return 0.0
+    counter = Counter(s)
+    total = len(s)
+    return -sum(
+        (count / total) * math.log2(count / total) for count in counter.values()
+    )
+
+
 def extract_features():
     global X
 
@@ -45,6 +62,7 @@ def extract_features():
 
     for col in TEXT_FEATURES:
         X[col + "_len"] = _encode_text_feature(df[col])
+        X[col + "_entropy"] = df[col].fillna("").apply(_string_entropy)
 
 
 extract_features()
