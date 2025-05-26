@@ -11,7 +11,7 @@ pd.set_option("display.max_columns", None)
 pd.set_option("display.width", 0)
 pd.set_option("display.max_colwidth", None)
 
-DATA_PATH = os.environ.get("DATA_PATH", "marked.csv")
+DATA_PATH = os.environ.get("DATA_PATH", "csv/marked.csv")
 df = pd.read_csv(DATA_PATH)
 df[TARGET] = df[TARGET].fillna("NORMAL")
 

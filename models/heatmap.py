@@ -3,6 +3,11 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+
+pd.set_option("display.max_columns", None)
+pd.set_option("display.width", 0)
+pd.set_option("display.max_colwidth", None)
+
 from matplotlib.colors import Normalize
 
 DATASET_NAME = "zap_emulated"
@@ -18,15 +23,34 @@ for model_dir in MODELS_ROOT.iterdir():
         df["class"] = df.index
         all_dfs.append(df.reset_index(drop=True))
 
+existing_classes = set()
+for df_model in all_dfs:
+    existing_classes.update(df_model["class"].unique())
+
+df = pd.read_csv(
+    "../data/zap_emulated/stats/suricata_attack_classification.csv",
+    index_col=0,
+)
+df = df[["precision", "recall", "f1-score"]]
+df["model"] = "suricata"
+df["class"] = df.index
+
+for cls in existing_classes:
+    if cls not in df["class"].values:
+        df.loc[cls] = [0.0, 0.0, 0.0, "suricata", cls]
+
+df = df[df["class"].isin(existing_classes)]
+all_dfs.append(df)
+
 full_df = pd.concat(all_dfs, ignore_index=True)
 
-aux_labels = {"NORMAL", "accuracy", "macro avg", "weighted avg"}
+aux_labels = ("NORMAL", "accuracy", "weighted avg", "macro avg")
 primary_classes = sorted(
     [cls for cls in full_df["class"].unique() if cls not in aux_labels]
 )
-classes = primary_classes[::-1]
+classes = primary_classes[::-1] + list(aux_labels)[::-1]
 metrics = ["precision", "recall", "f1-score"]
-models = sorted(full_df["model"].unique())
+models = full_df["model"].unique()[::-1]
 
 columns_ordered = []
 for i, model in enumerate(models):
@@ -64,7 +88,7 @@ x_centers = [
 ]
 
 fig, ax = plt.subplots(
-    figsize=(max(10, sum(col_widths) * 0.5), max(6, len(classes) * 0.4))
+    figsize=(max(12, sum(col_widths) * 0.5), max(6, len(classes) * 0.4))
 )
 
 cmap = plt.get_cmap("YlGnBu")
