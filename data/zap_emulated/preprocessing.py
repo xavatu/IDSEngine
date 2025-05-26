@@ -33,6 +33,7 @@ apply_aliases()
 le_target = LabelEncoder()
 X = df[NUMERIC_FEATURES].copy()
 y = le_target.fit_transform(df[TARGET])
+label_encoders = {}
 
 
 def _encode_categorial_feature(series: pd.Series) -> pd.Series:
@@ -58,7 +59,9 @@ def extract_features():
     global X
 
     for col in CATEGORICAL_FEATURES:
-        X[col] = _encode_categorial_feature(df[col])
+        le = LabelEncoder()
+        X[col] = le.fit_transform(df[col].fillna("unknown").astype(str))
+        label_encoders[col] = le
 
     for col in TEXT_FEATURES:
         X[col + "_len"] = _encode_text_feature(df[col])

@@ -6,6 +6,7 @@ from collections import Counter
 from contextlib import contextmanager
 from pathlib import Path
 
+import joblib
 import numpy as np
 import pandas as pd
 from sklearn.metrics import (
@@ -23,7 +24,7 @@ parser.add_argument(
     help="Импорт-путь к файлу, где объявлен `model`",
 )
 parser.add_argument(
-    "--dataset_path",
+    "--dataset_module",
     required=True,
     help="Полный или относительный путь к каталогу с датасетом (должен содержать preprocessing.py)",
 )
@@ -31,8 +32,8 @@ args, unknown = parser.parse_known_args()
 
 module = importlib.import_module(args.model_module)
 
-DATASET_PATH = Path(args.dataset_path).resolve()
-DATASET_NAME = DATASET_PATH.name
+dataset_module = Path(args.dataset_module).resolve()
+DATASET_NAME = dataset_module.name
 
 
 def import_preprocessed_dataset():
@@ -53,12 +54,13 @@ def import_preprocessed_dataset():
             if prev_path0 != sys.path[0]:
                 sys.path.insert(0, prev_path0)
 
-    with import_from(DATASET_PATH):
+    with import_from(dataset_module):
         prep = importlib.import_module("preprocessing")
 
 
 import_preprocessed_dataset()
 X, y, le_target = prep.X, prep.y, prep.le_target
+label_encoders = prep.label_encoders
 
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, stratify=y, random_state=42
@@ -159,3 +161,10 @@ classification_errors_df.to_csv(
     f"./stats/{DATASET_NAME}_attack_misclassification.csv",
     index=False,
 )
+
+artifacts = {
+    "model": model,
+    "label_encoders": label_encoders,
+    "le_target": le_target,
+}
+joblib.dump(artifacts, "./model_artifacts.pkl")

@@ -12,10 +12,13 @@ from matplotlib.colors import Normalize
 
 DATASET_NAME = "zap_emulated"
 MODELS_ROOT = Path("./")
+MODEL_EXCLUDE = ["naive_bayes"]
 
 all_dfs = []
 for model_dir in MODELS_ROOT.iterdir():
     csv_path = model_dir / "stats" / f"{DATASET_NAME}_attack_classification.csv"
+    if model_dir.name in MODEL_EXCLUDE:
+        continue
     if csv_path.is_file():
         df = pd.read_csv(csv_path, index_col=0)
         df = df[["precision", "recall", "f1-score"]]
@@ -50,7 +53,11 @@ primary_classes = sorted(
 )
 classes = primary_classes[::-1] + list(aux_labels)[::-1]
 metrics = ["precision", "recall", "f1-score"]
-models = full_df["model"].unique()[::-1]
+models = (
+    full_df[full_df["class"] == "weighted avg"]
+    .sort_values(by="recall", ascending=False)["model"]
+    .values
+)
 
 columns_ordered = []
 for i, model in enumerate(models):
@@ -164,5 +171,5 @@ ax.set_title(
 ax.set_ylabel("Class")
 
 fig.tight_layout()
-fig.savefig("heatmap_with_thin_separators.png", dpi=300)
+fig.savefig("heatmap_with_thin_separators.png", dpi=600)
 plt.close()

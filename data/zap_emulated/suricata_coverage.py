@@ -102,10 +102,67 @@ for vuln in sorted(df_marked["vuln_name"].unique()):
     )
 
 df_results = pd.DataFrame(results)
-df_results.to_csv("./stats/suricata_attack_classification.csv", index=False)
-print(df_results)
-print("False Positives per class:")
-fp_normal = df_marked[
-    (df_marked["vuln_name"] == "NORMAL") & (df_marked["is_detected"])
-]
-print(fp_normal)
+
+macro_precision = df_results["precision"].mean()
+macro_recall = df_results["recall"].mean()
+macro_f1 = df_results["f1-score"].mean()
+
+total_support = df_results["support"].sum()
+
+weighted_precision = (
+    df_results["precision"] * df_results["support"]
+).sum() / total_support
+weighted_recall = (
+    df_results["recall"] * df_results["support"]
+).sum() / total_support
+weighted_f1 = (
+    df_results["f1-score"] * df_results["support"]
+).sum() / total_support
+
+overall_accuracy = acc
+
+summary_rows = pd.DataFrame(
+    [
+        {
+            "vuln_name": "macro avg",
+            "TP": None,
+            "FN": None,
+            "FP": None,
+            "TN": None,
+            "support": total_support,
+            "precision": macro_precision,
+            "recall": macro_recall,
+            "f1-score": macro_f1,
+            "accuracy": None,
+        },
+        {
+            "vuln_name": "weighted avg",
+            "TP": None,
+            "FN": None,
+            "FP": None,
+            "TN": None,
+            "support": total_support,
+            "precision": weighted_precision,
+            "recall": weighted_recall,
+            "f1-score": weighted_f1,
+            "accuracy": None,
+        },
+        {
+            "vuln_name": "accuracy",
+            "TP": None,
+            "FN": None,
+            "FP": None,
+            "TN": None,
+            "support": total_support,
+            "precision": overall_accuracy,
+            "recall": overall_accuracy,
+            "f1-score": overall_accuracy,
+            "accuracy": overall_accuracy,
+        },
+    ]
+)
+
+df_results_with_avg = pd.concat([df_results, summary_rows], ignore_index=True)
+df_results_with_avg.to_csv(
+    "./stats/suricata_attack_classification.csv", index=False
+)

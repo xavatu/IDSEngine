@@ -159,52 +159,78 @@ LABELS = [
 ]
 
 # from collections import Counter
+#
 # import pandas as pd
-# df = pd.read_csv("marked.csv")
-# print(Counter(df["vuln_name"]))
+#
+# df = pd.read_csv("./csv/marked.csv")
+# vulns = pd.read_csv("./csv/vulns.csv")
+# df["x-zap-scan-id"] = (
+#     df["x-zap-scan-id"].fillna("-1").astype(int64).astype(str).str.strip()
+# )
+# print(df["x-zap-scan-id"])
+# merged_df = pd.merge(
+#     df,
+#     vulns[["id", "name"]],
+#     left_on="x-zap-scan-id",
+#     right_on="id",
+#     how="left",
+# )
+# print(Counter(merged_df["name"]))
+
 LABELS_COUNT = {
-    None: 94072,
-    "Remote OS Command Injection": 5736,
-    "Path Traversal": 5515,
-    "SQL Injection - SQLite": 4902,
-    "Remote File Inclusion": 4188,
-    "Server Side Template Injection": 3528,
-    "SQL Injection": 2994,
-    "SQL Injection - MySQL": 1323,
-    "SQL Injection - PostgreSQL": 1008,
-    "SQL Injection - Hypersonic SQL": 984,
-    "SQL Injection - MsSQL": 945,
-    "SQL Injection - Oracle": 820,
-    "External Redirect": 756,
-    "Server Side Code Injection": 504,
-    "Parameter Tampering": 454,
-    "CRLF Injection": 357,
-    "XSLT Injection": 296,
-    "Server Side Include": 260,
-    "Cloud Metadata Potentially Exposed": 252,
-    "Cross Site Scripting (Reflected)": 241,
-    "XPath Injection": 189,
-    "Hidden File Found": 178,
-    "Format String Error": 155,
-    "User Agent Fuzzer": 144,
-    "Spring Actuator Information Leak": 80,
-    "Cross Site Scripting (Persistent) - Prime": 63,
-    "Buffer Overflow": 59,
-    "Spring4Shell": 25,
-    "Remote Code Execution - CVE-2012-1823": 24,
-    "Source Code Disclosure - CVE-2012-1823": 12,
-    "Cross Site Scripting (Persistent) - Spider": 12,
-    "Directory Browsing": 12,
+    None: 30770,
+    "Remote OS Command Injection": 3367,
+    "Path Traversal": 3273,
+    "SQL Injection - SQLite": 2771,
+    "Remote File Inclusion": 2131,
+    "Server Side Template Injection": 1816,
+    "SQL Injection": 1515,
+    "SQL Injection - PostgreSQL": 716,
+    "SQL Injection - MySQL": 672,
+    "SQL Injection - Hypersonic SQL": 542,
+    "SQL Injection - MsSQL": 480,
+    "SQL Injection - Oracle": 422,
+    "External Redirect": 402,
+    "Server Side Code Injection": 304,
+    "Parameter Tampering": 230,
+    "CRLF Injection": 224,
+    "XSLT Injection": 152,
+    "Cross Site Scripting (Reflected)": 148,
+    "Server Side Include": 144,
+    "Hidden File Found": 141,
+    "Cloud Metadata Potentially Exposed": 133,
+    "Remote Code Execution - CVE-2012-1823": 112,
+    "User Agent Fuzzer": 109,
+    "Format String Error": 99,
+    "XPath Injection": 96,
+    "Spring Actuator Information Leak": 43,
+    "Buffer Overflow": 33,
+    "Cross Site Scripting (Persistent) - Prime": 32,
+    "Spring4Shell": 16,
     "Source Code Disclosure - /WEB-INF Folder": 8,
-    "Trace.axd Information Leak": 6,
-    ".htaccess Information Leak": 6,
-    ".env Information Leak": 6,
+    "Cross Site Scripting (Persistent) - Spider": 7,
+    "Source Code Disclosure - CVE-2012-1823": 7,
+    "Directory Browsing": 7,
+    ".env Information Leak": 4,
+    ".htaccess Information Leak": 4,
+    "Trace.axd Information Leak": 4,
     "ELMAH Information Leak": 2,
 }
+# for k, v in sorted(LABELS_COUNT.items(), key=lambda x: x[1]):
+#     print(k, "–", v)
 
 ALIASES = {
-    "NORMAL": (None,),
-    "SQL_INJECTION": (
+    "CWE-78: OS Command Injection": (
+        "Remote OS Command Injection",
+        "Spring4Shell",
+        "Remote Code Execution - CVE-2012-1823",
+    ),
+    "CWE-22: Path Traversal": (
+        "Path Traversal",
+        "Hidden File Found",
+        "Directory Browsing",
+    ),
+    "CWE-89: SQL Injection": (
         "SQL Injection - SQLite",
         "SQL Injection",
         "SQL Injection - MySQL",
@@ -213,136 +239,63 @@ ALIASES = {
         "SQL Injection - MsSQL",
         "SQL Injection - Oracle",
     ),
-    "OS_COMMAND_INJECTION": (
-        "Remote OS Command Injection",
-        "Remote Code Execution - CVE-2012-1823",
-        "Spring4Shell",
+    "CWE-98: Remote File Inclusion": ("Remote File Inclusion",),
+    "CWE-94: Code Injection": (
+        "Server Side Template Injection",
+        "Server Side Code Injection",
     ),
-    "SERVER_SIDE_TEMPLATE_INJECTION": ("Server Side Template Injection",),
-    "SERVER_SIDE_CODE_INJECTION": ("Server Side Code Injection",),
-    "XML_EXPLOITING": (
+    "CWE-601: Open Redirect": ("External Redirect",),
+    "CWE-472: Parameter Tampering": ("Parameter Tampering",),
+    "CWE-93: CRLF Injection": ("CRLF Injection",),
+    "CWE-91: XML Injection": (
         "XSLT Injection",
         "XPath Injection",
     ),
-    "FILE_INCLUSION": (
-        "Remote File Inclusion",
-        "Server Side Include",
-    ),
-    "PATH_TRAVERSAL": ("Path Traversal",),
-    "CRLF_INJECTION": ("CRLF Injection",),
-    "FORMAT_STRING": ("Format String Error",),
-    "BUFFER_OVERFLOW": ("Buffer Overflow",),
-    "XSS": (
-        "Cross Site Scripting (Reflected)",
-        "Cross Site Scripting (Persistent) - Prime",
-        "Cross Site Scripting (Persistent) - Spider",
-    ),
-    "OPEN_REDIRECT": ("External Redirect",),
-    "PARAMETER_MANIPULATION": ("Parameter Tampering",),
-    "FUZZER": ("User Agent Fuzzer",),
-    "INFORMATION_LEAK": (
+    "CWE-97: SSI": ("Server Side Include",),
+    "CWE-200: Information Leak": (
         "Cloud Metadata Potentially Exposed",
         "Spring Actuator Information Leak",
+        "Source Code Disclosure - CVE-2012-1823",
+        "Source Code Disclosure - /WEB-INF Folder",
         "Trace.axd Information Leak",
         ".htaccess Information Leak",
         ".env Information Leak",
         "ELMAH Information Leak",
     ),
-    "SOURCE_CODE_DISCLOSURE": (
-        "Source Code Disclosure - CVE-2012-1823",
-        "Source Code Disclosure - /WEB-INF Folder",
+    "CWE-79: XSS": (
+        "Cross Site Scripting (Reflected)",
+        "Cross Site Scripting (Persistent) - Prime",
+        "Cross Site Scripting (Persistent) - Spider",
     ),
-    "DIRECTORY_INDEXING": (
-        "Directory Browsing",
-        "Hidden File Found",
-    ),
+    "CWE-134: Format string": ("Format String Error",),
+    "CWE-20: Fuzzing": ("User Agent Fuzzer",),
+    "CWE-120: Buffer Overflow": ("Buffer Overflow",),
+    "NORMAL": (None,),
 }
 
 # ALIASES_COUNT = {
 #     alias: sum(LABELS_COUNT[label] for label in ALIASES[alias])
 #     for alias in ALIASES
 # }
+# ALIASES_COUNT = {
+#     k: v for k, v in sorted(ALIASES_COUNT.items(), key=lambda item: item[1])
+# }
 # print(ALIASES_COUNT)
 ALIASES_COUNT = {
-    "NORMAL": 94072,
-    "SQL_INJECTION": 12976,
-    "OS_COMMAND_INJECTION": 5785,
-    "SERVER_SIDE_TEMPLATE_INJECTION": 3528,
-    "SERVER_SIDE_CODE_INJECTION": 504,
-    "XML_EXPLOITING": 485,
-    "FILE_INCLUSION": 4448,
-    "PATH_TRAVERSAL": 5515,
-    "CRLF_INJECTION": 357,
-    "FORMAT_STRING": 155,
-    "BUFFER_OVERFLOW": 59,
-    "XSS": 316,
-    "OPEN_REDIRECT": 756,
-    "PARAMETER_MANIPULATION": 454,
-    "FUZZER": 144,
-    "INFORMATION_LEAK": 352,
-    "SOURCE_CODE_DISCLOSURE": 20,
-    "DIRECTORY_INDEXING": 190,
-}
-
-SURICATA_MAP = {
-    "not-suspicious": ("NORMAL",),
-    "unknown": ("NORMAL",),
-    "web-application-attack": (
-        "SQL_INJECTION",
-        "XML_EXPLOITING",
-        "FILE_INCLUSION",
-        "PATH_TRAVERSAL",
-        "CRLF_INJECTION",
-        "XSS",
-    ),
-    "web-application-activity": (
-        "OPEN_REDIRECT",
-        "PARAMETER_MANIPULATION",
-    ),
-    "shellcode-detect": (
-        "OS_COMMAND_INJECTION",
-        "SERVER_SIDE_TEMPLATE_INJECTION",
-        "SERVER_SIDE_CODE_INJECTION",
-        "BUFFER_OVERFLOW",
-        "FORMAT_STRING",
-    ),
-    "system-call-detect": (
-        "OS_COMMAND_INJECTION",
-        "SERVER_SIDE_CODE_INJECTION",
-        "BUFFER_OVERFLOW",
-        "FORMAT_STRING",
-    ),
-    "attempted-recon": (
-        "INFORMATION_LEAK",
-        "SOURCE_CODE_DISCLOSURE",
-        "DIRECTORY_INDEXING",
-    ),
-    "successful-recon-limited": (
-        "INFORMATION_LEAK",
-        "SOURCE_CODE_DISCLOSURE",
-        "DIRECTORY_INDEXING",
-    ),
-    "successful-recon-largescale": (
-        "INFORMATION_LEAK",
-        "SOURCE_CODE_DISCLOSURE",
-        "DIRECTORY_INDEXING",
-        "FILE_INCLUSION",
-        "PATH_TRAVERSAL",
-    ),
-    "string-detect": (
-        "CRLF_INJECTION",
-        "XSS",
-        "PARAMETER_MANIPULATION",
-    ),
-    "suspicious-filename-detect": (
-        "DIRECTORY_INDEXING",
-        "PATH_TRAVERSAL",
-    ),
-    "misc-activity": ("FUZZER",),
-    "misc-attack": (
-        "FUZZER",
-        "PARAMETER_MANIPULATION",
-    ),
-    "bad-unknown": ("FUZZER",),
-    "network-scan": ("FUZZER",),
+    "CWE-120: Buffer Overflow": 33,
+    "CWE-134: Format string": 99,
+    "CWE-20: Fuzzing": 109,
+    "CWE-97: SSI": 144,
+    "CWE-79: XSS": 187,
+    "CWE-200: Information Leak": 205,
+    "CWE-93: CRLF Injection": 224,
+    "CWE-472: Parameter Tampering": 230,
+    "CWE-91: XML Injection": 248,
+    "CWE-601: Open Redirect": 402,
+    "CWE-94: Code Injection": 2120,
+    "CWE-98: Remote File Inclusion": 2131,
+    "CWE-22: Path Traversal": 3421,
+    "CWE-78: OS Command Injection": 3495,
+    "CWE-89: SQL Injection": 7118,
+    "NORMAL": 30770,
 }
