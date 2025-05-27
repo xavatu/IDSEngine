@@ -1,0 +1,7 @@
+alert http any any <> any any (msg:"pass through HTTP GET"; http.method; content:"GET"; sid:999990; classtype:http-pass-through; rev:1;)
+alert http any any <> any any (msg:"pass through HTTP POST"; http.method; content:"POST"; sid:999991; classtype:http-pass-through; rev:1;)
+alert http any any <> any any (msg:"pass through HTTP PUT"; http.method; content:"PUT"; sid:999992; classtype:http-pass-through; rev:1;)
+alert http any any <> any any (msg:"pass through HTTP DELETE"; http.method; content:"DELETE"; sid:999993; classtype:http-pass-through; rev:1;)
+alert http any any <> any any (msg:"pass through HTTP PATCH"; http.method; content:"PATCH"; sid:999994; classtype:http-pass-through; rev:1;)
+alert http any any <> any any (msg:"pass through HTTP OPTIONS"; http.method; content:"OPTIONS"; sid:999995; classtype:http-pass-through; rev:1;)
+alert http any any <> any any (msg:"pass through HTTP HEAD"; http.method; content:"HEAD"; sid:999996; classtype:http-pass-through; rev:1;)
