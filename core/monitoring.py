@@ -24,7 +24,7 @@ parser.add_argument(
     help="Название датасета из `/data`, например `zap_emulated`",
 )
 parser.add_argument("--suricata_log_path", required=True)
-parser.add_argument("--out_path", required=False, default="./monitoring.log")
+parser.add_argument("--out_path", required=False, default="./monitoring.json")
 args, unknown = parser.parse_known_args()
 
 MODEL_PATH = f"./models/{args.model}"
@@ -40,6 +40,26 @@ label_encoders = model_artifacts["label_encoders"]
 le_target = model_artifacts["le_target"]
 
 
+def merge_alerts_only(d1, d2):
+    merged = d1.copy()
+    if "alert" in d2:
+        if "alert" in merged:
+            v1 = merged["alert"]
+            v2 = d2["alert"]
+            # Если уже список — расширяем
+            if isinstance(v1, list):
+                merged["alert"] = v1 + [v2]
+            else:
+                merged["alert"] = [v1, v2]
+        else:
+            merged["alert"] = d2["alert"]
+    for k, v in d2.items():
+        if k == "alert":
+            continue
+        merged[k] = v
+    return merged
+
+
 class MonitoringHandler(FileSystemEventHandler):
     def __init__(self, filepath, outpath):
         self.filepath = os.path.realpath(filepath)
@@ -47,7 +67,9 @@ class MonitoringHandler(FileSystemEventHandler):
         self._inode = None
         self._file = None
         self._open()
-        self._seen_flow_ids = set()
+        self._flow_cache = dict()
+        self._cache_size = 256
+        self._flow_timeout = 0.1
 
     def _open(self, read_hist=True):
         self._file = open(self.filepath, "r")
@@ -83,6 +105,7 @@ class MonitoringHandler(FileSystemEventHandler):
             self._process_new_lines()
 
     def _process_new_lines(self):
+        now = time.time()
         for line in self._file:
             try:
                 event = json.loads(line)
@@ -96,17 +119,27 @@ class MonitoringHandler(FileSystemEventHandler):
             pred_label = le_target.inverse_transform([prediction])[0]
             event["ml_pred"] = pred_label
             flow_id = event.get("flow_id")
+
             if flow_id is not None:
-                if len(self._seen_flow_ids) > 100:
-                    self._seen_flow_ids.clear()
-                if flow_id in self._seen_flow_ids:
-                    continue
-                self._seen_flow_ids.add(flow_id)
-            with open(self.outpath, "a", encoding="utf-8") as f:
-                f.write(json.dumps(event, ensure_ascii=False) + "\n")
-            print(
-                f"[MONITOR] {flow_id} {event.get('src_ip')}:{event.get('src_port')} → {event.get('dest_ip')}:{event.get('dest_port')} | {pred_label}"
-            )
+                prev, last_time = self._flow_cache.pop(flow_id, ({}, now))
+                merged = merge_alerts_only(prev, event)
+                self._flow_cache[flow_id] = (merged, now)
+            else:
+                with open(self.outpath, "a", encoding="utf-8") as f:
+                    f.write(json.dumps(event, ensure_ascii=False) + "\n")
+
+        self._flush_old_flows()
+
+    def _flush_old_flows(self):
+        now = time.time()
+        remove = []
+        for flow_id, (merged, last_time) in self._flow_cache.items():
+            if now - last_time > self._flow_timeout:
+                with open(self.outpath, "a", encoding="utf-8") as f:
+                    f.write(json.dumps(merged, ensure_ascii=False) + "\n")
+                remove.append(flow_id)
+        for flow_id in remove:
+            del self._flow_cache[flow_id]
 
 
 def watch_http_json(in_path, out_path):
