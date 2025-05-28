@@ -24,7 +24,9 @@ parser.add_argument(
     help="Название датасета из `/data`, например `zap_emulated`",
 )
 parser.add_argument("--suricata_log_path", required=True)
-parser.add_argument("--out_path", required=False, default="./monitoring.json")
+parser.add_argument(
+    "--out_path", required=False, default="./logs/watchdog.jsonl"
+)
 args, unknown = parser.parse_known_args()
 
 MODEL_PATH = f"./models/{args.model}"

@@ -21,7 +21,6 @@ pcap-file:
 stream:
   reassembly:
     depth: 0
-  memcap: 256mb
   midstream: true
   inline: yes
 
@@ -53,15 +52,14 @@ app-layer:
 outputs:
   - eve-log:
       enabled: yes
-      filetype: regular
-      filename: /var/log/suricata/eve.json
+      filetype: unix_stream
+      filename: /etc/suricata/socket/eve.sock
       types:
         - packet:
             include-payload: yes
             include-payload-printable: yes
         - alert:
             payload: yes
-            payload-buffer-size: 0
             payload-printable: yes
             payload-length: yes
             packet: yes
@@ -69,12 +67,13 @@ outputs:
             http-body-printable: yes
             metadata:
               app-layer: true
-#        - http:
-#            extended: yes
-#            dump-all-headers: both
 
 logging:
   default-log-level: debug
   outputs:
     - console:
         enabled: yes
+    - file:
+        enabled: yes
+        level: debug
+        filename: /var/log/suricata/suricata.log
