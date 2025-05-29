@@ -10,9 +10,9 @@ pd.set_option("display.max_colwidth", None)
 
 from matplotlib.colors import Normalize
 
-DATASET_NAME = "zap_emulated"
+DATASET_NAME = "zap_big"
 MODELS_ROOT = Path("./")
-MODEL_EXCLUDE = ["naive_bayes"]
+MODEL_EXCLUDE = ["naive_bayes", "logistic_regression"]
 
 all_dfs = []
 for model_dir in MODELS_ROOT.iterdir():
@@ -30,20 +30,20 @@ existing_classes = set()
 for df_model in all_dfs:
     existing_classes.update(df_model["class"].unique())
 
-df = pd.read_csv(
-    "../data/zap_emulated/stats/suricata_attack_classification.csv",
-    index_col=0,
-)
-df = df[["precision", "recall", "f1-score"]]
-df["model"] = "suricata"
-df["class"] = df.index
-
-for cls in existing_classes:
-    if cls not in df["class"].values:
-        df.loc[cls] = [0.0, 0.0, 0.0, "suricata", cls]
-
-df = df[df["class"].isin(existing_classes)]
-all_dfs.append(df)
+# df = pd.read_csv(
+#     f"../data/{DATASET_NAME}/stats/suricata_attack_classification.csv",
+#     index_col=0,
+# )
+# df = df[["precision", "recall", "f1-score"]]
+# df["model"] = "suricata"
+# df["class"] = df.index
+#
+# for cls in existing_classes:
+#     if cls not in df["class"].values:
+#         df.loc[cls] = [0.0, 0.0, 0.0, "suricata", cls]
+#
+# df = df[df["class"].isin(existing_classes)]
+# all_dfs.append(df)
 
 full_df = pd.concat(all_dfs, ignore_index=True)
 
@@ -99,9 +99,7 @@ fig, ax = plt.subplots(
 )
 
 cmap = plt.get_cmap("YlGnBu")
-norm = Normalize(
-    vmin=np.nanmin(heatmap_df.values), vmax=np.nanmax(heatmap_df.values)
-)
+norm = Normalize(vmin=0, vmax=1)
 
 mesh = ax.pcolormesh(
     x_edges,

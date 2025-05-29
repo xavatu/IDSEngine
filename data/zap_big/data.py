@@ -1,7 +1,5 @@
+import math
 from collections import Counter
-
-import numpy as np
-import pandas as pd
 
 COLUMNS = [
     "timestamp",
@@ -141,22 +139,6 @@ LABELS = [
     "SQL Injection - MySQL",
 ]
 
-
-df = pd.read_csv("./csv/marked.csv")
-vulns = pd.read_csv("./csv/vulns.csv")
-df["x-zap-scan-id"] = (
-    df["x-zap-scan-id"].fillna("-1").astype(np.int64).astype(str).str.strip()
-)
-merged_df = pd.merge(
-    df,
-    vulns[["id", "name"]],
-    left_on="x-zap-scan-id",
-    right_on="id",
-    how="left",
-)
-merged_df = merged_df.replace({np.nan: None})
-LABELS_COUNT = dict(Counter(merged_df["name"]))
-
 ALIASES = {
     "CWE-78: OS Command Injection": (
         "Remote OS Command Injection",
@@ -209,7 +191,46 @@ ALIASES = {
     "NORMAL": (None,),
 }
 
-ALIASES_COUNT = {
-    alias: sum(LABELS_COUNT[label] for label in ALIASES[alias])
-    for alias in ALIASES
-}
+
+def string_entropy(s: str) -> float:
+    if not s:
+        return 0.0
+    counter = Counter(s)
+    total = len(s)
+    return -sum(
+        (cnt / total) * math.log2(cnt / total) for cnt in counter.values()
+    )
+
+
+def extract_features(event):
+    http = event.get("http", {})
+    flow = event.get("flow", {})
+    payload = event.get("payload", "") or ""
+    payload_printable = event.get("payload_printable", "") or ""
+
+    feat = {
+        "flow_pkts_toserver": int(flow.get("pkts_toserver", 0)),
+        "flow_pkts_toclient": int(flow.get("pkts_toclient", 0)),
+        "flow_bytes_toserver": int(flow.get("bytes_toserver", 0)),
+        "flow_bytes_toclient": int(flow.get("bytes_toclient", 0)),
+        "http_length": int(http.get("length", 0) or 0),
+        "proto": event.get("proto", "") or "unknown",
+        "app_proto": event.get("app_proto", "") or "unknown",
+        "http_method": http.get("http_method", "") or "unknown",
+        "http_protocol": http.get("protocol", "") or "unknown",
+        "payload_len": int(len(payload)),
+        "payload_entropy": float(string_entropy(payload)),
+        "payload_printable_len": int(len(payload_printable)),
+        "payload_printable_entropy": float(string_entropy(payload_printable)),
+        "http_hostname_len": int(len(http.get("hostname", "") or "")),
+        "http_hostname_entropy": float(
+            string_entropy(http.get("hostname", "") or "")
+        ),
+        "http_url_len": int(len(http.get("url", "") or "")),
+        "http_url_entropy": float(string_entropy(http.get("url", "") or "")),
+        "http_user_agent_len": int(len(http.get("http_user_agent", "") or "")),
+        "http_user_agent_entropy": float(
+            string_entropy(http.get("http_user_agent", "") or "")
+        ),
+    }
+    return feat
