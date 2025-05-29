@@ -1,10 +1,9 @@
 import argparse
 import importlib
 import multiprocessing
-import os
 import queue
-import socket
 import threading
+import redis
 
 import joblib
 
@@ -18,35 +17,16 @@ from monitoring.monitoring_threads import (
 
 WORKER_THREADS = max(4, multiprocessing.cpu_count() * 2)
 
-# import sys
-# print(getattr(sys, "_is_gil_enabled", lambda: "Unknown")())
-# False
 
-
-def unix_socket_reader(socket_path, q, status):
-    if os.path.exists(socket_path):
-        os.remove(socket_path)
-    server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    server.bind(socket_path)
-    server.listen(1)
-    print(f"[INFO] Listening on {socket_path} ... Waiting for Suricata.")
-    conn, _ = server.accept()
-    print(f"[INFO] Suricata connected!")
-    buf = b""
+def redis_socket_reader(redis_client, redis_key, q, status):
+    print(
+        f"[INFO] Listening Redis key '{redis_key}' ... Waiting for Suricata events."
+    )
     while True:
-        data = conn.recv(65536)
-        if not data:
-            break
-        buf += data
-        *lines, buf = buf.split(b"\n")
-        for line in lines:
-            line = line.strip()
-            if line:
-                decoded = line.decode("utf-8")
-                q.put(decoded)
-                status.update_read(1)
-    if buf.strip():
-        decoded = buf.decode("utf-8")
+        item = redis_client.blpop(redis_key, timeout=0)
+        if not item:
+            continue
+        decoded = item[1].decode("utf-8")
         q.put(decoded)
         status.update_read(1)
 
@@ -55,16 +35,18 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", required=True)
     parser.add_argument("--dataset", required=True)
-    parser.add_argument("--unix_socket", required=True)
+    parser.add_argument("--redis_host", required=False, default="127.0.0.1")
+    parser.add_argument("--redis_port", required=False, type=int, default=6379)
     parser.add_argument(
-        "--out_path", required=False, default="./logs/unix_socket.jsonl"
+        "--redis_key", required=False, default="suricata-eve-log"
+    )
+    parser.add_argument(
+        "--out_path", required=False, default="./logs/redis_socket.jsonl"
     )
     args, unknown = parser.parse_known_args()
 
     MODEL_PATH = f"./models/{args.model}"
     DATASET_MODULE = f"data.{args.dataset}.extract_features"
-    SOCKET_PATH = args.unix_socket
-    OUT_PATH = args.out_path
 
     extract_features = importlib.import_module(DATASET_MODULE).extract_features
     model_artifacts = joblib.load(MODEL_PATH + "/model_artifacts.pkl")
@@ -78,8 +60,14 @@ def main():
     status = Status()
     threads = []
 
+    redis_client = redis.StrictRedis(
+        host=args.redis_host, port=int(args.redis_port), db=0
+    )
+
     t_reader = threading.Thread(
-        target=unix_socket_reader, args=(SOCKET_PATH, q, status), daemon=True
+        target=redis_socket_reader,
+        args=(redis_client, args.redis_key, q, status),
+        daemon=True,
     )
     threads.append(t_reader)
 
@@ -102,7 +90,7 @@ def main():
         threads.append(t)
 
     t_writer = threading.Thread(
-        target=writer_thread, args=(out_queue, OUT_PATH), daemon=True
+        target=writer_thread, args=(out_queue, args.out_path), daemon=True
     )
     threads.append(t_writer)
 

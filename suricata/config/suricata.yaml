@@ -68,6 +68,46 @@ outputs:
             metadata:
               app-layer: true
 
+  - eve-log:
+      enabled: yes
+      filetype: redis
+      redis:
+        server: 127.0.0.1
+        port: 6379
+        key: suricata-eve-log
+        mode: list
+      types:
+        - packet:
+            include-payload: yes
+            include-payload-printable: yes
+        - alert:
+            payload: yes
+            payload-printable: yes
+            payload-length: yes
+            packet: yes
+            http-body: yes
+            http-body-printable: yes
+            metadata:
+              app-layer: true
+
+  - eve-log:
+      enabled: yes
+      filetype: regular
+      filename: /var/log/suricata/eve.json
+      types:
+        - packet:
+            include-payload: yes
+            include-payload-printable: yes
+        - alert:
+            payload: yes
+            payload-printable: yes
+            payload-length: yes
+            packet: yes
+            http-body: yes
+            http-body-printable: yes
+            metadata:
+              app-layer: true
+
 logging:
   default-log-level: debug
   outputs:

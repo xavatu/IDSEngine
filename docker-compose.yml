@@ -15,3 +15,13 @@ services:
       - ./suricata/rules:/etc/suricata/rules
       - ./suricata/socket:/etc/suricata/socket
     entrypoint: /etc/suricata/entrypoint.sh
+
+  redis:
+    image: redis:latest
+    container_name: redis
+    restart: unless-stopped
+    network_mode: host
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./redis/data:/data
