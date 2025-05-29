@@ -16,6 +16,7 @@ from sklearn.metrics import (
     accuracy_score,
 )
 from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -59,8 +60,16 @@ def import_preprocessed_dataset():
 
 
 import_preprocessed_dataset()
-X, y, le_target = prep.X, prep.y, prep.le_target
-label_encoders = prep.label_encoders
+df = prep.load_dataframe(prep.DEFAULT_DATA_PATH)
+X = prep.pipeline.fit_transform(df)
+
+le_target = LabelEncoder()
+y = le_target.fit_transform(df[prep.TARGET])
+
+label_encoders = {}
+fe = prep.pipeline.named_steps.get("feature_extractor")
+label_encoders = fe.label_encoders_
+
 
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, stratify=y, random_state=42

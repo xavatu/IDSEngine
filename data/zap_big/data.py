@@ -1,6 +1,3 @@
-import math
-from collections import Counter
-
 COLUMNS = [
     "timestamp",
     "flow_id",
@@ -191,46 +188,51 @@ ALIASES = {
     "NORMAL": (None,),
 }
 
-
-def string_entropy(s: str) -> float:
-    if not s:
-        return 0.0
-    counter = Counter(s)
-    total = len(s)
-    return -sum(
-        (cnt / total) * math.log2(cnt / total) for cnt in counter.values()
-    )
-
-
-def extract_features(event):
-    http = event.get("http", {})
-    flow = event.get("flow", {})
-    payload = event.get("payload", "") or ""
-    payload_printable = event.get("payload_printable", "") or ""
-
-    feat = {
-        "flow_pkts_toserver": int(flow.get("pkts_toserver", 0)),
-        "flow_pkts_toclient": int(flow.get("pkts_toclient", 0)),
-        "flow_bytes_toserver": int(flow.get("bytes_toserver", 0)),
-        "flow_bytes_toclient": int(flow.get("bytes_toclient", 0)),
-        "http_length": int(http.get("length", 0) or 0),
-        "proto": event.get("proto", "") or "unknown",
-        "app_proto": event.get("app_proto", "") or "unknown",
-        "http_method": http.get("http_method", "") or "unknown",
-        "http_protocol": http.get("protocol", "") or "unknown",
-        "payload_len": int(len(payload)),
-        "payload_entropy": float(string_entropy(payload)),
-        "payload_printable_len": int(len(payload_printable)),
-        "payload_printable_entropy": float(string_entropy(payload_printable)),
-        "http_hostname_len": int(len(http.get("hostname", "") or "")),
-        "http_hostname_entropy": float(
-            string_entropy(http.get("hostname", "") or "")
-        ),
-        "http_url_len": int(len(http.get("url", "") or "")),
-        "http_url_entropy": float(string_entropy(http.get("url", "") or "")),
-        "http_user_agent_len": int(len(http.get("http_user_agent", "") or "")),
-        "http_user_agent_entropy": float(
-            string_entropy(http.get("http_user_agent", "") or "")
-        ),
-    }
-    return feat
+ID2ALIASES = {
+    "0": "CWE-200: Information Exposure",
+    "6": "CWE-22: Path Traversal",
+    "6-1": "CWE-22: Path Traversal",
+    "6-2": "CWE-22: Path Traversal",
+    "6-3": "CWE-22: Path Traversal",
+    "6-4": "CWE-22: Path Traversal",
+    "6-5": "CWE-22: Path Traversal",
+    "7": "CWE-98: Remote File Inclusion",
+    "10033": "CWE-200: Information Exposure",
+    "10045": "CWE-200: Information Exposure",
+    "10045-1": "CWE-200: Information Exposure",
+    "20017": "CWE-200: Information Exposure",
+    "20018": "CWE-20: Input Validation",
+    "20019": "CWE-601: Open Redirect",
+    "20019-1": "CWE-601: Open Redirect",
+    "20019-2": "CWE-601: Open Redirect",
+    "20019-3": "CWE-601: Open Redirect",
+    "20019-4": "CWE-601: Open Redirect",
+    "30001": "CWE-120: Buffer Overflow",
+    "30002": "CWE-134: Format String",
+    "40003": "CWE-113: CRLF Injection",
+    "40008": "CWE-472: Parameter Tampering",
+    "40009": "CWE-97: SSI",
+    "40012": "CWE-79: XSS",
+    "40016": "CWE-79: XSS",
+    "40017": "CWE-79: XSS",
+    "40018": "CWE-89: SQL Injection",
+    "40019": "CWE-89: SQL Injection",
+    "40020": "CWE-89: SQL Injection",
+    "40021": "CWE-89: SQL Injection",
+    "40022": "CWE-89: SQL Injection",
+    "40024": "CWE-89: SQL Injection",
+    "40027": "CWE-89: SQL Injection",
+    "40028": "CWE-200: Information Exposure",
+    "40029": "CWE-200: Information Exposure",
+    "40032": "CWE-200: Information Exposure",
+    "40034": "CWE-200: Information Exposure",
+    "40035": "CWE-200: Information Exposure",
+    "40042": "CWE-200: Information Exposure",
+    "40045": "CWE-78: OS Command Injection",
+    "90017": "CWE-91: XML Injection",
+    "90019": "CWE-94: Code Injection",
+    "90020": "CWE-78: OS Command Injection",
+    "90021": "CWE-91: XML Injection",
+    "90034": "CWE-200: Information Exposure",
+    "90035": "CWE-94: Code Injection",
+}

@@ -1,76 +1,125 @@
+import math
 import os
 import re
+from collections import Counter
+from typing import Dict
 
 import numpy as np
 import pandas as pd
+from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import LabelEncoder
+
+from data import *
 
 pd.set_option("display.max_columns", None)
 pd.set_option("display.width", 0)
 pd.set_option("display.max_colwidth", None)
 
-from sklearn.base import BaseEstimator, TransformerMixin
-from sklearn.compose import ColumnTransformer
-from sklearn.impute import SimpleImputer
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import OrdinalEncoder, LabelEncoder
-
-from data import (
-    TARGET,
-    NUMERIC_FEATURES,
-    CATEGORICAL_FEATURES,
-    TEXT_FEATURES,
-)
+DEFAULT_DATA_PATH = os.path.realpath("./by_alias/")
+BATCH_SIZE = 10000
 
 
 def string_entropy(s: str) -> float:
     if not s:
         return 0.0
-    from collections import Counter
-    import math
-
     counter = Counter(s)
     total = len(s)
     return -sum(
-        (cnt / total) * math.log2(cnt / total) for cnt in counter.values()
+        (count / total) * math.log2(count / total) for count in counter.values()
     )
 
 
+def encode_text_length(series: pd.Series):
+    return series.fillna("").str.len().astype(np.int32)
+
+
+def load_dataframe(path):
+    all_batches = []
+    files = sorted(os.listdir(path))
+    for filename in files:
+        filepath = os.path.join(path, filename)
+        df = pd.read_json(filepath, lines=True, nrows=BATCH_SIZE)
+        all_batches.append(df)
+    df_raw = pd.concat(all_batches, ignore_index=True)
+
+    df_enriched = TargetEnricher(ID2ALIASES, TARGET).fit_transform(df_raw)
+    records = df_enriched.to_dict(orient="records")
+    feats = []
+    for event in records:
+        http = event.get("http", {})
+        flow = event.get("flow", {})
+        row = {
+            "src_ip": event.get("src_ip", ""),
+            "src_port": event.get("src_port", ""),
+            "dest_ip": event.get("dest_ip", ""),
+            "dest_port": event.get("dest_port", ""),
+            "proto": event.get("proto", "unknown"),
+            "app_proto": event.get("app_proto", "unknown"),
+            "http_method": http.get("http_method", "unknown"),
+            "http_protocol": http.get("protocol", "unknown"),
+            "flow_pkts_toserver": int(flow.get("pkts_toserver", 0)),
+            "flow_pkts_toclient": int(flow.get("pkts_toclient", 0)),
+            "flow_bytes_toserver": int(flow.get("bytes_toserver", 0)),
+            "flow_bytes_toclient": int(flow.get("bytes_toclient", 0)),
+            "http_length": int(http.get("length", 0)),
+            "direction": event.get("direction", ""),
+            "payload": event.get("payload", ""),
+            "payload_printable": event.get("payload_printable", ""),
+            "http_hostname": http.get("hostname", ""),
+            "http_url": http.get("url", ""),
+            "http_user_agent": http.get("http_user_agent", ""),
+            "vuln_name": event.get("vuln_name", "NORMAL"),  # ключевая строка
+        }
+        feats.append(row)
+
+    return pd.DataFrame(feats)
+
+
 class FeatureExtractor(BaseEstimator, TransformerMixin):
-    def fit(self, X, y=None):
+    def __init__(self):
+        self.label_encoders_: Dict[str, LabelEncoder] = {}
+
+    def fit(self, X, y=None):  # noqa
+        for col in CATEGORICAL_FEATURES:
+            le = LabelEncoder()
+            le.fit(X[col].fillna("unknown").astype(str))
+            self.label_encoders_[col] = le
         return self
 
     def transform(self, X):
-        if isinstance(X, pd.DataFrame):
-            records = X.to_dict(orient="records")
-        else:
-            records = X
-        feats = []
-        for event in records:
-            http = event.get("http", {}) or {}
-            flow = event.get("flow", {}) or {}
-            row = {
-                "src_ip": event.get("src_ip", ""),
-                "src_port": event.get("src_port", ""),
-                "dest_ip": event.get("dest_ip", ""),
-                "dest_port": event.get("dest_port", ""),
-                "proto": event.get("proto", "") or "unknown",
-                "app_proto": event.get("app_proto", "") or "unknown",
-                "http_method": http.get("http_method", "") or "unknown",
-                "http_protocol": http.get("protocol", "") or "unknown",
-                "flow_pkts_toserver": int(flow.get("pkts_toserver", 0) or 0),
-                "flow_pkts_toclient": int(flow.get("pkts_toclient", 0) or 0),
-                "flow_bytes_toserver": int(flow.get("bytes_toserver", 0) or 0),
-                "flow_bytes_toclient": int(flow.get("bytes_toclient", 0) or 0),
-                "http_length": int(http.get("length", 0) or 0),
-                "direction": event.get("direction", ""),
-                "payload": event.get("payload", "") or "",
-                "payload_printable": event.get("payload_printable", "") or "",
-                "http_hostname": http.get("hostname", "") or "",
-                "http_url": http.get("url", "") or "",
-                "http_user_agent": http.get("http_user_agent", "") or "",
-            }
-            feats.append(row)
-        return pd.DataFrame(feats)
+        feats = [X[NUMERIC_FEATURES].astype(np.float32).to_numpy()]
+
+        cat_cols = []
+        for col in CATEGORICAL_FEATURES:
+            le = self.label_encoders_[col]
+            cat_encoded = le.transform(X[col].fillna("unknown").astype(str))
+            cat_cols.append(
+                np.array(cat_encoded, dtype=np.int32).reshape(-1, 1)
+            )
+        if cat_cols:
+            feats.append(np.hstack(cat_cols))
+
+        text_len_cols = []
+        text_entropy_cols = []
+        for col in TEXT_FEATURES:
+            text_len = encode_text_length(X[col])
+            text_len_cols.append(
+                np.array(text_len, dtype=np.float32).reshape(-1, 1)
+            )
+
+            entropy_col = X[col].fillna("").apply(string_entropy)
+            entropy_col = np.array(entropy_col, dtype=np.float32).reshape(-1, 1)
+            text_entropy_cols.append(entropy_col)
+
+        if text_len_cols:
+            feats.append(np.hstack(text_len_cols))
+            feats.append(np.hstack(text_entropy_cols))
+
+        return np.hstack(feats)
+
+    def fit_transform(self, X, y=None, **kwargs):
+        return self.fit(X, y).transform(X)
 
 
 class TargetEnricher(BaseEstimator, TransformerMixin):
@@ -88,7 +137,7 @@ class TargetEnricher(BaseEstimator, TransformerMixin):
         )
         return m.group(1).strip() if m else None
 
-    def fit(self, X, y=None):
+    def fit(self, X, y=None):  # noqa
         return self
 
     def transform(self, X):
@@ -101,100 +150,13 @@ class TargetEnricher(BaseEstimator, TransformerMixin):
         )
         return X
 
-
-class TextStatsTransformer(BaseEstimator, TransformerMixin):
-    def __init__(self, text_columns):
-        self.text_columns = text_columns
-
-    def fit(self, X, y=None):
-        return self
-
-    def transform(self, x: pd.DataFrame):
-        feats = []
-        for col in self.text_columns:
-            col_data = x[col].fillna("")
-            feats.append(col_data.str.len().to_numpy()[:, None])
-            feats.append(col_data.apply(string_entropy).to_numpy()[:, None])
-        return np.hstack(feats)
-
-    def get_feature_names_out(self):
-        names = []
-        for col in self.text_columns:
-            names.extend([f"{col}_len", f"{col}_entropy"])
-        return np.array(names)
+    def fit_transform(self, X, y=None, **kwargs):
+        X = self.fit(X, y).transform(X)
+        return X
 
 
-def build_enrichment_pipeline(id2target, target_col):
-    return Pipeline(
-        [
-            ("feature_extractor", FeatureExtractor()),
-            ("target_enricher", TargetEnricher(id2target, target_col)),
-        ]
-    )
-
-
-def build_ml_preprocessor(
-    numeric_features, categorical_features, text_features
-):
-    numeric_pipe = Pipeline(
-        steps=[("imputer", SimpleImputer(strategy="median"))]
-    )
-    categorical_pipe = Pipeline(
-        steps=[
-            (
-                "imputer",
-                SimpleImputer(strategy="constant", fill_value="unknown"),
-            ),
-            (
-                "encoder",
-                OrdinalEncoder(
-                    handle_unknown="use_encoded_value", unknown_value=-1
-                ),
-            ),
-        ]
-    )
-    text_pipe = Pipeline(
-        steps=[("stats", TextStatsTransformer(text_columns=text_features))]
-    )
-
-    return ColumnTransformer(
-        transformers=[
-            ("num", numeric_pipe, numeric_features),
-            ("cat", categorical_pipe, categorical_features),
-            ("txt", text_pipe, text_features),
-        ],
-        remainder="drop",
-    )
-
-
-DATA_PATH = "./json/zap.jsonl"
-MAPPED_VULNS_PATH = "./csv/vulns_mapped.csv"
-
-vulns_df = pd.read_csv(MAPPED_VULNS_PATH)
-vulns_df["id"] = vulns_df["id"].astype(str)
-id2target = dict(zip(vulns_df["id"], vulns_df["alias"]))
-enrichment_pipeline = build_enrichment_pipeline(id2target, TARGET)
-ml_preproc = build_ml_preprocessor(
-    NUMERIC_FEATURES, CATEGORICAL_FEATURES, TEXT_FEATURES
+pipeline = Pipeline(
+    [
+        ("feature_extractor", FeatureExtractor()),
+    ]
 )
-
-BATCH_SIZE = 10000
-ALIAS_DIR = "./by_alias"
-
-
-# Склеиваем всё в один DataFrame (если хватает памяти)
-all_batches = []
-files = sorted(os.listdir(ALIAS_DIR))
-for fname in files:
-    path = os.path.join(ALIAS_DIR, fname)
-    df = pd.read_json(path, lines=True, nrows=BATCH_SIZE)
-    all_batches.append(df)
-    print(fname, df.shape)
-df_raw = pd.concat(all_batches, ignore_index=True)
-df_enriched = enrichment_pipeline.fit_transform(df_raw)
-
-X = ml_preproc.fit_transform(df_enriched)
-
-le_target = LabelEncoder()
-y = le_target.fit_transform(df_enriched[TARGET])
-label_encoders = None
