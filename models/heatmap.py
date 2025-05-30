@@ -10,7 +10,7 @@ pd.set_option("display.max_colwidth", None)
 
 from matplotlib.colors import Normalize
 
-DATASET_NAME = "zap_big"
+DATASET_NAME = "new"
 MODELS_ROOT = Path("./")
 MODEL_EXCLUDE = ["naive_bayes", "logistic_regression"]
 

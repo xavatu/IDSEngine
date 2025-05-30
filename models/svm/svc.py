@@ -1,26 +1,25 @@
 from sklearn.model_selection import GridSearchCV
 from sklearn.pipeline import Pipeline
-from xgboost import XGBClassifier
+from sklearn.svm import SVC
 
 pipeline = Pipeline(
     [
         (
             "model",
-            XGBClassifier(
-                objective="multi:softmax",
-                eval_metric="mlogloss",
-                n_jobs=-1,
+            SVC(
+                kernel="rbf",
+                probability=True,
             ),
         ),
     ]
 )
 
 param_grid = {
-    "model__n_estimators": [500, 700, 1000],
-    "model__max_depth": [8, 10, 13],
-    "model__learning_rate": [0.05, 0.1],
-    "model__subsample": [0.7, 0.8],
-    "model__colsample_bytree": [0.7, 0.8],
+    "model__C": [0.1, 1.0, 10.0, 100.0],
+    "model__gamma": ["scale", "auto", 0.01, 0.001],
+    "model__kernel": ["rbf", "poly", "sigmoid"],
+    "model__degree": [2, 3],
+    "model__shrinking": [True, False],
 }
 
 
@@ -39,11 +38,3 @@ model = LazyBestEstimator(
     n_jobs=-1,
     verbose=1,
 )
-
-# XGBClassifier(
-#     colsample_bytree=0.7,
-#     eval_metric="mlogloss",
-#     learning_rate=0.05,
-#     n_estimators=700,
-#     n_jobs=-1,
-# )

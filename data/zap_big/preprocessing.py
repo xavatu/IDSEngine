@@ -17,7 +17,7 @@ pd.set_option("display.width", 0)
 pd.set_option("display.max_colwidth", None)
 
 DEFAULT_DATA_PATH = os.path.realpath("./by_alias/")
-BATCH_SIZE = 10000
+BATCH_SIZE = 3000
 
 
 def string_entropy(s: str) -> float:
@@ -43,37 +43,7 @@ def load_dataframe(path):
         all_batches.append(df)
     df_raw = pd.concat(all_batches, ignore_index=True)
 
-    df_enriched = TargetEnricher(ID2ALIASES, TARGET).fit_transform(df_raw)
-    records = df_enriched.to_dict(orient="records")
-    feats = []
-    for event in records:
-        http = event.get("http", {})
-        flow = event.get("flow", {})
-        row = {
-            "src_ip": event.get("src_ip", ""),
-            "src_port": event.get("src_port", ""),
-            "dest_ip": event.get("dest_ip", ""),
-            "dest_port": event.get("dest_port", ""),
-            "proto": event.get("proto", "unknown"),
-            "app_proto": event.get("app_proto", "unknown"),
-            "http_method": http.get("http_method", "unknown"),
-            "http_protocol": http.get("protocol", "unknown"),
-            "flow_pkts_toserver": int(flow.get("pkts_toserver", 0)),
-            "flow_pkts_toclient": int(flow.get("pkts_toclient", 0)),
-            "flow_bytes_toserver": int(flow.get("bytes_toserver", 0)),
-            "flow_bytes_toclient": int(flow.get("bytes_toclient", 0)),
-            "http_length": int(http.get("length", 0)),
-            "direction": event.get("direction", ""),
-            "payload": event.get("payload", ""),
-            "payload_printable": event.get("payload_printable", ""),
-            "http_hostname": http.get("hostname", ""),
-            "http_url": http.get("url", ""),
-            "http_user_agent": http.get("http_user_agent", ""),
-            "vuln_name": event.get("vuln_name", "NORMAL"),  # ключевая строка
-        }
-        feats.append(row)
-
-    return pd.DataFrame(feats)
+    return TargetEnricher(ID2ALIASES, TARGET).fit_transform(df_raw)
 
 
 class FeatureExtractor(BaseEstimator, TransformerMixin):
@@ -141,18 +111,43 @@ class TargetEnricher(BaseEstimator, TransformerMixin):
         return self
 
     def transform(self, X):
-        X = X.copy()
         X["x-zap-scan-id"] = X["payload_printable"].apply(
             self.extract_zap_scan_id
         )
         X[self.target_col] = (
             X["x-zap-scan-id"].map(self.id2target).fillna("NORMAL")
         )
-        return X
 
-    def fit_transform(self, X, y=None, **kwargs):
-        X = self.fit(X, y).transform(X)
-        return X
+        records = X.to_dict(orient="records")
+        feats = []
+        for event in records:
+            http = event.get("http", {})
+            flow = event.get("flow", {})
+            row = {
+                # "src_ip": event.get("src_ip", ""),
+                # "src_port": event.get("src_port", ""),
+                # "dest_ip": event.get("dest_ip", ""),
+                # "dest_port": event.get("dest_port", ""),
+                # "proto": event.get("proto", "unknown"),
+                # "app_proto": event.get("app_proto", "unknown"),
+                "http_method": http.get("http_method", "unknown"),
+                # "http_protocol": http.get("protocol", "unknown"),
+                # "flow_pkts_toserver": int(flow.get("pkts_toserver", 0)),
+                # "flow_pkts_toclient": int(flow.get("pkts_toclient", 0)),
+                "flow_bytes_toserver": int(flow.get("bytes_toserver", 0)),
+                "flow_bytes_toclient": int(flow.get("bytes_toclient", 0)),
+                "http_length": int(http.get("length", 0)),
+                # "direction": event.get("direction", ""),
+                # "payload": event.get("payload", ""),
+                "payload_printable": event.get("payload_printable", ""),
+                "http_hostname": http.get("hostname", ""),
+                "http_url": http.get("url", ""),
+                "http_user_agent": http.get("http_user_agent", ""),
+                "vuln_name": event.get("vuln_name", "NORMAL"),
+            }
+            feats.append(row)
+
+        return pd.DataFrame(feats)
 
 
 pipeline = Pipeline(

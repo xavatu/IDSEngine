@@ -43,37 +43,37 @@ COLUMNS = [
 ]
 
 FEATURES = [
-    "src_ip",
-    "src_port",
-    "dest_ip",
-    "dest_port",
-    "proto",
-    "app_proto",
-    "direction",
-    "flow_pkts_toserver",
-    "flow_pkts_toclient",
+    # "src_ip",
+    # "src_port",
+    # "dest_ip",
+    # "dest_port",
+    # "proto",
+    # "app_proto",
+    # "direction",
+    # "flow_pkts_toserver",
+    # "flow_pkts_toclient",
     "flow_bytes_toserver",
     "flow_bytes_toclient",
-    "payload",
+    # "payload",
     "payload_printable",
     "http_hostname",
     "http_url",
     "http_user_agent",
     "http_method",
-    "http_protocol",
+    # "http_protocol",
     "http_length",
 ]
 
 NUMERIC_FEATURES = [
-    "flow_pkts_toserver",
-    "flow_pkts_toclient",
+    # "flow_pkts_toserver",
+    # "flow_pkts_toclient",
     "flow_bytes_toserver",
     "flow_bytes_toclient",
     "http_length",
 ]
 
 TEXT_FEATURES = [
-    "payload",
+    # "payload",
     "payload_printable",
     "http_hostname",
     "http_url",
@@ -81,17 +81,17 @@ TEXT_FEATURES = [
 ]
 
 CATEGORICAL_FEATURES = [
-    "proto",
-    "app_proto",
+    # "proto",
+    # "app_proto",
     "http_method",
-    "http_protocol",
+    # "http_protocol",
 ]
 
 IP_FEATURES = [
-    "src_ip",
-    "dest_ip",
-    "src_port",
-    "dest_port",
+    # "src_ip",
+    # "dest_ip",
+    # "src_port",
+    # "dest_port",
 ]
 
 TARGET = "vuln_name"

@@ -72,11 +72,11 @@ label_encoders = fe.label_encoders_
 
 
 X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.2, stratify=y, random_state=42
+    X, y, test_size=0.4, stratify=y
 )
 
 model = module.model
-model.fit(X_train, y_train)
+model = model.fit(X_train, y_train)
 
 y_pred = model.predict(X_test)
 
@@ -177,3 +177,22 @@ artifacts = {
     "le_target": le_target,
 }
 joblib.dump(artifacts, "./model_artifacts.pkl")
+
+
+feature_names = prep.FEATURES
+importances_path = f"./stats/{DATASET_NAME}_feature_importance.csv"
+
+if hasattr(model, "feature_importances_"):
+    importances = model.feature_importances_
+    fi_df = pd.DataFrame(
+        {
+            "feature": feature_names,
+            "importance": importances,
+        }
+    ).sort_values("importance", ascending=False)
+    fi_df.to_csv(importances_path, index=False)
+    print(f"[INFO] Feature importances saved to {importances_path}")
+else:
+    print(
+        "[INFO] Model does not expose `feature_importances_`; skipping export."
+    )

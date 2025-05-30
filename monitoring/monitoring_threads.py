@@ -114,6 +114,9 @@ class Status:
             self.update_event.clear()
 
 
+predict_lock = threading.Lock()
+
+
 def event_worker(
     q,
     model,
@@ -134,17 +137,22 @@ def event_worker(
             event = Event(raw_json)
             features_dict = extract_features(event.data, label_encoders)
             if not features_dict:
-                return
+                continue
             features_df = pd.DataFrame([features_dict])
-            prediction = model.predict(features_df)[0]
-            pred_label = le_target.inverse_transform([prediction])[0]
-            event["ml_pred"] = pred_label
 
+            # Потокобезопасный predict
+            with predict_lock:
+                prediction = model.predict(features_df)[0]
+                pred_label = le_target.inverse_transform([prediction])[0]
+
+            event["ml_pred"] = pred_label
             flow_id = event.flow_id
             flow_cache.update(flow_id, event, merge_func)
+
             expired = flow_cache.flush_expired()
             for expired_event in expired:
                 out_queue.put(expired_event)
+
             status.update_processed(1)
         except Exception as e:
             print(f"[ERROR] Processing event: {e!r}")
